@@ -1,0 +1,7 @@
+# .gitignore
+venv/
+.env
+studio_db/
+nohup.out
+__pycache__/
+*.pyc
