@@ -460,18 +460,7 @@ def process_buffered_messages(session_id):
 
 @app.route('/')
 def index():
-    session['session_id'] = str(uuid.uuid4())
-    session_id = session['session_id']
-    print(f"DEBUG INDEX: New session created = {session_id}")
-
-    # Initialize all tracking variables
-    conversations[session_id] = [SystemMessage(
-        content=system_prompt.format(context="", history="", question=""))]
-    message_buffers[session_id] = []
-    buffer_locks[session_id] = Lock()
-    timers[session_id] = None
-    conversation_states[session_id] = "INTRO"  # Make sure this is set!
-
+    # Don't create session here - let it be created when user actually chats
     return render_template('index.html')
 
 
@@ -482,21 +471,27 @@ def chat():
         return jsonify({'messages': []})
 
     session_id = session.get('session_id')
-    print(f"DEBUG CHAT: Session ID = {session_id}")
-    print(
-        f"DEBUG CHAT: Current conversations keys = {list(conversations.keys())}")
-    print(f"DEBUG CHAT: Current states = {conversation_states}")
-    print(f"DEBUG CHAT: Current names = {client_names}")
 
+    # Create session only if it doesn't exist or isn't in our conversations
     if not session_id or session_id not in conversations:
-        session['session_id'] = str(uuid.uuid4())
-        session_id = session['session_id']
+        session_id = str(uuid.uuid4())
+        session['session_id'] = session_id
+        print(f"DEBUG CHAT: Created new session = {session_id}")
+
+        # Initialize all tracking variables for new session
         conversations[session_id] = [SystemMessage(
             content=system_prompt.format(context="", history="", question=""))]
         message_buffers[session_id] = []
         buffer_locks[session_id] = Lock()
         timers[session_id] = None
         conversation_states[session_id] = "INTRO"
+        discovery_count[session_id] = 0
+    else:
+        print(f"DEBUG CHAT: Using existing session = {session_id}")
+
+    print(
+        f"DEBUG CHAT: Current state = {conversation_states.get(session_id, 'NOT_SET')}")
+    print(f"DEBUG CHAT: Current names = {client_names}")
 
     with buffer_locks[session_id]:
         message_buffers[session_id].append(user_message)
@@ -528,4 +523,4 @@ def poll():
 
 
 if __name__ == '__main__':
-    app.run(debug=True, port=5000)
+    app.run(debug=True, port=5001)  # Use different port than the other bot
